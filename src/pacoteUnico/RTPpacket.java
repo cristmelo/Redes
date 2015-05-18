@@ -65,8 +65,7 @@ public class RTPpacket{
         for(int i=0; i<4;i++){
         	header[11 - i] = (byte)(Ssrc>>(8*i));  
         }
-        
-        		
+               		
       
         //fill the payload bitstream:
         //--------------------------
@@ -76,7 +75,7 @@ public class RTPpacket{
         //fill payload array of byte from data (given in parameter of the constructor)
         //......
         for(int i=0; i<data_length; i++){
-        	payload[0] = data[0];
+        	payload[i] = data[i];
         }
         
         // ! Do not forget to uncomment method printheader() below !

@@ -172,7 +172,7 @@ public class Client{
                 }
                 System.out.println("aqui");
                 //init RTSP sequence number
-                RTSPSeqNb = 1;
+                RTSPSeqNb++;
                 
                 //Send SETUP message to the server
                 send_RTSP_request("SETUP");
