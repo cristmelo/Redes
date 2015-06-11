@@ -41,15 +41,18 @@ public class Servidor extends JFrame implements ActionListener{
 	//Atributos do servidor
 	String hostname;
 	int sourcePort;
+	
 	ServerSocket serverSocket;
-	Socket socketClient;
+	Socket clientSocket;
 	BufferedReader inputServer;
 	BufferedWriter outputServer;
 	
+	ServerSocket serverDataSocket;
+	Socket videoDataSocket;
+	InputStream dataInputServer;
+	OutputStream dataOutputServer;
 	
-	
-	
-	//Video variables:
+	//Variaveis do Video:
     //----------------
     int imagenb = 0; //image nb of the image currently transmitted
     VideoStream video; //VideoStream object used to access video frames
@@ -60,7 +63,7 @@ public class Servidor extends JFrame implements ActionListener{
 	
 	//GUI
 	JLabel label;
-	Timer timer; 
+	Timer timer; //Usado para controlar o evento de envio dos frames
 	byte[] buf; //buffer used to store the images to send to the client
 	
 	
@@ -68,7 +71,7 @@ public class Servidor extends JFrame implements ActionListener{
 	Servidor(String hostname, int sourcePort){
         super("Server");	//Inicializa o frame
         
-        //Inicializa informa��es do servidor
+        //Inicializa informacoes do servidor
         this.hostname = hostname;
         this.sourcePort = sourcePort;
         this.serverSocket = null;
@@ -79,7 +82,7 @@ public class Servidor extends JFrame implements ActionListener{
         timer.setCoalesce(true);
         buf = new byte[15000];
                 
-        //Handler to close the main window
+        //Handler para o botao close da janela
         addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
                 //stop the timer and exit
@@ -94,7 +97,7 @@ public class Servidor extends JFrame implements ActionListener{
 	}
 	
 	//-- 
-	public void listenSocket(){
+	public void listenClientPort(){
 		try{
 			serverSocket = new ServerSocket(sourcePort, 1, InetAddress.getByName(hostname));
 		}catch(IOException e){
@@ -104,9 +107,9 @@ public class Servidor extends JFrame implements ActionListener{
 		logger.info("Conex�o com o servidor aberta no endere�o: " + this.hostname + ":" + this.sourcePort);
 	}
 	
-	public void stopListenSocket(){
+	public void stopListenPort(){
 		try {
-			socketClient.close();
+			clientSocket.close();
 		} catch (IOException e) {
 			logger.info("Deu erro no close client!");
 		}
@@ -118,9 +121,9 @@ public class Servidor extends JFrame implements ActionListener{
 	public void makeConnectionWithRequester(){
 		
 		try{
-			socketClient = serverSocket.accept();
-			inputServer = new BufferedReader(new InputStreamReader(socketClient.getInputStream()));
-		    outputServer = new BufferedWriter(new OutputStreamWriter(socketClient.getOutputStream()));
+			clientSocket = serverSocket.accept();
+			inputServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+		    outputServer = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 		}
 		catch(Exception e){
 			logger.log(Level.SEVERE, "Deu muito ruim!", e);
@@ -160,6 +163,29 @@ public class Servidor extends JFrame implements ActionListener{
 	}
 	//--
 	
+	//--dataConnection
+	public void makeVideoDataConnection(){
+		try{
+			serverDataSocket = new ServerSocket(sourcePort+1, 1, InetAddress.getByName(hostname));
+			videoDataSocket = serverDataSocket.accept();
+			dataInputServer = videoDataSocket.getInputStream();
+		    dataOutputServer = videoDataSocket.getOutputStream();
+		    
+		}catch(IOException e){
+			logger.log(Level.SEVERE, "Erro ao iniciar a conexao de dados", e);
+			return;
+		}
+		logger.info("Conex�o com o servidor aberta no endere�o: " + this.hostname + ":" + this.sourcePort+1);
+	}
+	
+	public void closeVideoDataConnection(){
+		try {
+			clientSocket.close();
+		} catch (IOException e) {
+			logger.info("Deu erro no close client!");
+		}
+	}
+	//--
 	
 	//-- Utilitarias
 	private String convertStreamToString() {
@@ -183,7 +209,6 @@ public class Servidor extends JFrame implements ActionListener{
 	//controlar o envio.
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		System.out.println("Eae");
 		if (imagenb < VIDEO_LENGTH)
         {
             //update current imagenb
@@ -191,8 +216,8 @@ public class Servidor extends JFrame implements ActionListener{
             try {
                 //get next frame to send from the video, as well as its size
                 int image_length = video.getnextframe(buf);
-                socketClient.getOutputStream().write(buf);
-                socketClient.getOutputStream().flush();
+                dataOutputServer.write(buf);
+                dataOutputServer.flush();
                 //outputServer.write(buf.toString());
                 logger.info(image_length+"");
                 label.setText("Send frame #" + imagenb);
@@ -211,8 +236,6 @@ public class Servidor extends JFrame implements ActionListener{
 		
 	}
 	
-	//--
-
 	
 	
 	//-- isSetupRequest, isStartRequest, isPauseRequest, isTearDownRequest
@@ -281,7 +304,7 @@ public class Servidor extends JFrame implements ActionListener{
 		String videoFileName;
 		
 		
-		server.listenSocket(); //Inicializa a conexao TCP
+		server.listenClientPort(); //Inicializa a conexao TCP
 		server.makeConnectionWithRequester(); 
 				
 		//Espera pelo requisi��o setup/nomeDoVideo
@@ -301,8 +324,9 @@ public class Servidor extends JFrame implements ActionListener{
 					if(isSetupRequest(requestReceived)){
 						try{
 							videoFileName = requestReceived.getUri().split("/")[1];
-							server.video = new VideoStream(videoFileName);							
+							server.video = new VideoStream(videoFileName);
 							recebeuSetupRequest = true;
+							server.makeVideoDataConnection();
 						}catch(Exception e){
 							recebeuSetupRequest = false;
 						}
@@ -316,13 +340,18 @@ public class Servidor extends JFrame implements ActionListener{
 					else if(isPauseRequest(requestReceived)){
 						server.timer.stop();
 					}
-					else if(isTeardownRequest(requestReceived)){
-						recebeuTearDownRequest = true;
-						server.timer.stop();
-					}
+					
 					else{
 						
 					}
+				}
+				if(isTeardownRequest(requestReceived)){
+					recebeuTearDownRequest = true;
+					server.closeServerConnectioWithClient();
+					server.closeVideoDataConnection();
+					server.stopListenPort();
+					server.timer.stop();
+					System.exit(0);
 				}
 			
 			}catch(Exception e){

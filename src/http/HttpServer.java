@@ -1,4 +1,4 @@
-package br.com.thiagovespa.http.utils;
+package http;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -14,9 +14,9 @@ import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import br.com.thiagovespa.http.utils.request.Request;
-import br.com.thiagovespa.http.utils.response.Response;
-import br.com.thiagovespa.http.utils.response.ResponseFactory;
+import http.request.Request;
+import http.response.Response;
+import http.response.ResponseFactory;
 
 /**
  * Servidor HTTP simples

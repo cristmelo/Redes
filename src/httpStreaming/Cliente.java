@@ -39,9 +39,16 @@ public class Cliente {
     //Informa��es do client
 	String serverName;
 	int socketPort;
+	
 	Socket clientSocket;
 	BufferedReader inputServer;
 	BufferedWriter outputServer;
+	
+	Socket videoDataSocket;
+	InputStream dataInputServer;
+	OutputStream dataOutputServer;
+	boolean isAlreadySetup=false;
+	
 	final static String CRLF = "\r\n";
 
 	
@@ -118,12 +125,13 @@ public class Cliente {
 
     } 
 
-    
+    //--
     public void makeConnectionWithServer(){
     	try {
 			clientSocket = new Socket(this.serverName, this.socketPort);
 			inputServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 			outputServer = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
+			
 		} catch (Exception e) {
 			logger.log(Level.SEVERE, "DeuRuim:", e );
 		}
@@ -136,12 +144,31 @@ public class Cliente {
 			logger.log(Level.SEVERE,"Deu ruim ao fechar conexão com servidor",e);
 		}
     }
+    //--
     
-    
-    //Pede pro servidor um arquivo de video
-    public void askForVideo(String videoFileName){
-    	
+    //--
+    public void makeDataConnection(){
+    	try {
+			videoDataSocket = new Socket(this.serverName, this.socketPort+1);
+			dataInputServer = videoDataSocket.getInputStream();
+			dataOutputServer = videoDataSocket.getOutputStream();
+			
+		} catch (Exception e) {
+			logger.log(Level.SEVERE, "DeuRuim:", e );
+		}
     }
+    
+    public void closeDataConnection(){
+    	try {
+			videoDataSocket.close();
+		} catch (Exception e) {
+			logger.log(Level.SEVERE,"Deu ruim ao fechar conexão com servidor",e);
+		}
+    }
+    
+    
+    //--
+    
     
     //------------------------------------
     //Handler for buttons
@@ -159,8 +186,11 @@ public class Cliente {
         public void actionPerformed(ActionEvent e){
             logger.info("Setup Button pressed !");
             try {
-                c.getURIRawContent("setup/" + c.videoFileName);
-				logger.info("Enviou msg!");
+            	if(!isAlreadySetup){
+            		c.getURIRawContent("setup/" + c.videoFileName);
+            		makeDataConnection();
+            		isAlreadySetup = true;
+            	}
 			} catch (Exception e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -181,9 +211,10 @@ public class Cliente {
         public void actionPerformed(ActionEvent e){
             logger.info("Play Button pressed !");
             try {
-                c.getURIRawContent("play/");
-                c.timer.start();
-				logger.info("Enviou msg!");
+            	if(isAlreadySetup){
+            		c.getURIRawContent("play/");
+            		c.timer.start();
+            	}
 			} catch (Exception e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -202,9 +233,10 @@ public class Cliente {
         public void actionPerformed(ActionEvent e){
             logger.info("Pause Button pressed !");
             try {
-                c.getURIRawContent("pause/");
-                c.timer.stop();
-				logger.info("Enviou msg!");
+            	if(isAlreadySetup){
+            		c.getURIRawContent("pause/");
+            		c.timer.stop();
+            	}
 			} catch (Exception e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -223,8 +255,10 @@ public class Cliente {
             logger.info("Teardown Button pressed !");
             try {
                 c.getURIRawContent("teardown/");
+                c.closeConnectionWithServer();
+                c.closeDataConnection();
                 c.timer.stop();
-				logger.info("Enviou msg!");
+                System.exit(0);
 			} catch (Exception e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -240,7 +274,7 @@ public class Cliente {
     class timerListener implements ActionListener {
         public void actionPerformed(ActionEvent e) {
         	try{
-	           clientSocket.getInputStream().read(buf);
+        		dataInputServer.read(buf);
 	            //get an Image object from the payload bitstream
 	            Toolkit toolkit = Toolkit.getDefaultToolkit();
 	            Image image = toolkit.createImage(buf, 0, buf.length);
@@ -264,29 +298,14 @@ public class Cliente {
     public String getURIRawContent(String path) throws UnknownHostException, IOException {
     	
 		try {
-			// Abre a conexão
-			//PrintWriter out = new PrintWriter(outputServer, true);
 		
 			// Envia a requisição
 			outputServer.write("GET " + path + " " + HTTP_VERSION + CRLF);
 			outputServer.write("Host: " + this.serverName + CRLF);
 			outputServer.write("Connection: Close"+ CRLF);
 			outputServer.flush();
-			/*
-			boolean loop = true;
-			StringBuffer sb = new StringBuffer();
-		
-			// recupera a resposta quando ela estiver disponível
-			while (loop) {
-				if (inputServer.ready()) {
-					int i = 0;
-					while ((i = inputServer.read()) != -1) {
-						sb.append((char) i);
-					}
-					loop = false;
-				}
-			}*/
-			return "";//sb.toString();
+
+			return "";
 		} catch(Exception e){
 			return "";
 		}
@@ -301,7 +320,6 @@ public class Cliente {
         cliente.videoFileName = "movie.Mjpeg";
         cliente.makeConnectionWithServer();
         logger.info("Pronto");
-        logger.info(cliente.getURIRawContent("cad"));
     }
 }
 

@@ -1,4 +1,4 @@
-package br.com.thiagovespa.http.utils.request;
+package http.request;
 
 import java.io.BufferedReader;
 import java.io.IOException;

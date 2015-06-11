@@ -1,6 +1,6 @@
-package br.com.thiagovespa.http.utils.response;
+package http.response;
 
-import br.com.thiagovespa.http.utils.request.Request;
+import http.request.Request;
 
 /**
  * Fábrica de respostas

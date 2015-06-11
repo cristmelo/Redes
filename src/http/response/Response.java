@@ -1,4 +1,4 @@
-package br.com.thiagovespa.http.utils.response;
+package http.response;
 
 
 /**

@@ -1,10 +1,10 @@
-package br.com.thiagovespa.http.utils.response;
+package http.response;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import br.com.thiagovespa.http.utils.request.Request;
+import http.request.Request;
 
 /**
  * Resposta utilizada para testes do servidor

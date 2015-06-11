@@ -1,4 +1,4 @@
-package br.com.thiagovespa.http.utils;
+package http;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -85,7 +85,7 @@ public class HttpClient {
 	}
 
 	public static void main(String[] args) {
-		HttpClient client = new HttpClient("www.thiagovespa.com.br", 80);
+		HttpClient client = new HttpClient("localhost", 8091);
 		try {
 			System.out.println(client.getURIRawContent("/blog/"));
 		} catch (UnknownHostException e) {
