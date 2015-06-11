@@ -3,6 +3,8 @@ package httpStreaming;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
@@ -12,9 +14,11 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.net.DatagramPacket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.logging.Level;
@@ -27,6 +31,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
+import udpStreaming.RTPpacket;
+
 
 public class Cliente {
 	public final static Logger logger = Logger.getLogger(Cliente.class.toString());
@@ -37,6 +43,7 @@ public class Cliente {
 	BufferedReader inputServer;
 	BufferedWriter outputServer;
 	final static String CRLF = "\r\n";
+
 	
 	
     //Informa�oes do video
@@ -84,9 +91,9 @@ public class Cliente {
         buttonPanel.add(pauseButton);
         buttonPanel.add(tearButton);
         setupButton.addActionListener(new setupButtonListener(this));
-        playButton.addActionListener(new playButtonListener());
-        pauseButton.addActionListener(new pauseButtonListener());
-        tearButton.addActionListener(new tearButtonListener());
+        playButton.addActionListener(new playButtonListener(this));
+        pauseButton.addActionListener(new pauseButtonListener(this));
+        tearButton.addActionListener(new tearButtonListener(this));
         
         //Image display label
         iconLabel.setIcon(null);
@@ -140,9 +147,6 @@ public class Cliente {
     //Handler for buttons
     //------------------------------------
     
-    //.............
-    //TO COMPLETE
-    //.............
     
     //Handler for Setup button
     //-----------------------
@@ -170,9 +174,20 @@ public class Cliente {
     //Handler for Play button
     //-----------------------
     class playButtonListener implements ActionListener {
+    	Cliente c;
+    	playButtonListener(Cliente c){
+    		this.c = c;
+    	}
         public void actionPerformed(ActionEvent e){
             logger.info("Play Button pressed !");
-            
+            try {
+                c.getURIRawContent("play/");
+                c.timer.start();
+				logger.info("Enviou msg!");
+			} catch (Exception e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
         }
     }
     
@@ -180,19 +195,40 @@ public class Cliente {
     //Handler for Pause button
     //-----------------------
     class pauseButtonListener implements ActionListener {
+    	Cliente c;
+    	public pauseButtonListener(Cliente c){
+    		this.c = c;
+    	}
         public void actionPerformed(ActionEvent e){
-            
             logger.info("Pause Button pressed !");
-                               
+            try {
+                c.getURIRawContent("pause/");
+                c.timer.stop();
+				logger.info("Enviou msg!");
+			} catch (Exception e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}                   
         }
     }
     
     //Handler for Teardown button
     //-----------------------
     class tearButtonListener implements ActionListener {
+    	Cliente c;
+    	public tearButtonListener(Cliente c) {
+    		this.c = c;
+    	}
         public void actionPerformed(ActionEvent e){
-            
             logger.info("Teardown Button pressed !");
+            try {
+                c.getURIRawContent("teardown/");
+                c.timer.stop();
+				logger.info("Enviou msg!");
+			} catch (Exception e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} 
         }
     }
     
@@ -203,7 +239,24 @@ public class Cliente {
     
     class timerListener implements ActionListener {
         public void actionPerformed(ActionEvent e) {
-            
+        	try{
+	           clientSocket.getInputStream().read(buf);
+	            //get an Image object from the payload bitstream
+	            Toolkit toolkit = Toolkit.getDefaultToolkit();
+	            Image image = toolkit.createImage(buf, 0, buf.length);
+	            
+	            //display the image as an ImageIcon object
+	            icon = new ImageIcon(image);
+	            iconLabel.setIcon(icon);
+        	
+        	}
+	        catch (InterruptedIOException iioe){
+	            System.out.println("Nothing to read");
+	        }
+	        catch (IOException ioe) {
+	            System.out.println("Exception caught: "+ioe);
+	        }
+        
         }
     }
     

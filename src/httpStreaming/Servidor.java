@@ -19,6 +19,7 @@ import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -30,7 +31,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.Timer;
 
-import udpStreaming.VideoStream;
+import udpStreaming.RTPpacket;
+import httpStreaming.VideoStream;
 
 public class Servidor extends JFrame implements ActionListener{
 	
@@ -43,6 +45,8 @@ public class Servidor extends JFrame implements ActionListener{
 	Socket socketClient;
 	BufferedReader inputServer;
 	BufferedWriter outputServer;
+	
+	
 	
 	
 	//Video variables:
@@ -175,11 +179,35 @@ public class Servidor extends JFrame implements ActionListener{
 		return stringResultante;
 	}
 		
-	//Algo Interessante: Enquanto o timer estiver rodando esta função vai ser chamada, então so precisamos controlar o timer para 
+	//Algo Interessante: Enquanto o timer estiver rodando esta funï¿½ï¿½o vai ser chamada, entï¿½o so precisamos controlar o timer para 
 	//controlar o envio.
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		System.out.println("Eae");
+		if (imagenb < VIDEO_LENGTH)
+        {
+            //update current imagenb
+            imagenb++;
+            try {
+                //get next frame to send from the video, as well as its size
+                int image_length = video.getnextframe(buf);
+                socketClient.getOutputStream().write(buf);
+                socketClient.getOutputStream().flush();
+                //outputServer.write(buf.toString());
+                logger.info(image_length+"");
+                label.setText("Send frame #" + imagenb);
+            }
+            catch(Exception ex)
+            {
+                System.out.println("Exception caught: "+ex);
+                System.exit(0);
+            }
+        }
+        else
+        {
+            //if we have reached the end of the video file, stop the timer
+            timer.stop();
+        }
 		
 	}
 	
@@ -191,26 +219,45 @@ public class Servidor extends JFrame implements ActionListener{
 	
 	public static boolean isSetupRequest(Request request){
 		String[] uri = request.getUri().split("/");
-		logger.info("Aqui: "+uri[0]);
-		if(uri[0].compareTo("setup")==0 && uri.length > 1)
-			return true;		
+		if(uri[0].compareTo("setup")==0 && uri.length > 1){
+			logger.info("Setup recebido!");
+			return true;
+		}		
 		else
 			return false;
 	}
 	
 	
-	private static boolean isStartRequest(Request requestReceived) {
-		return false;
+	private static boolean isStartRequest(Request request) {
+		String[] uri = request.getUri().split("/");
+		if(uri[0].compareTo("play")==0){
+			logger.info("Play recebido!");
+			return true;
+		}		
+		else
+			return false;
 	}
 	
 	
-	private static boolean isPauseRequest(Request requestReceived) {
-		return false;
+	private static boolean isPauseRequest(Request request) {
+		String[] uri = request.getUri().split("/");
+		if(uri[0].compareTo("pause")==0){
+			logger.info("Pause Recebido!");
+			return true;
+		}		
+		else
+			return false;
 	}
 	
 	
-	private static boolean isTeardownRequest(Request requestReceived) {
-		return false;
+	private static boolean isTeardownRequest(Request request) {
+		String[] uri = request.getUri().split("/");
+		if(uri[0].compareTo("teardown")==0){
+			logger.info("Teardown recebido!");
+			return true;
+		}		
+		else
+			return false;
 	}
 	
 	
@@ -237,49 +284,54 @@ public class Servidor extends JFrame implements ActionListener{
 		server.listenSocket(); //Inicializa a conexao TCP
 		server.makeConnectionWithRequester(); 
 				
-		//Espera pelo requisição setup/nomeDoVideo
+		//Espera pelo requisiï¿½ï¿½o setup/nomeDoVideo
 		
 		
 		
 		boolean recebeuSetupRequest = false;
 		boolean	recebeuTearDownRequest = false;
 		while(!recebeuTearDownRequest){
-			
-			requestReceived = server.receiveRequest();
-			responseBuilted = ResponseFactory.createResponse(requestReceived);
-			responseString = responseBuilted.respond();
-			server.sendString(responseString);
-			
-			if(!recebeuSetupRequest){
-				if(isSetupRequest(requestReceived)){
-					try{
-						videoFileName = requestReceived.getUri().split("/")[1];
-						server.video = new VideoStream(videoFileName);
-						recebeuSetupRequest = true;
-					}catch(Exception e){
-						recebeuSetupRequest = false;
+			try{			
+				requestReceived = server.receiveRequest();
+				responseBuilted = ResponseFactory.createResponse(requestReceived);
+				responseString = responseBuilted.respond();
+				server.sendString(responseString);
+				
+				if(!recebeuSetupRequest){
+					if(isSetupRequest(requestReceived)){
+						try{
+							videoFileName = requestReceived.getUri().split("/")[1];
+							server.video = new VideoStream(videoFileName);							
+							recebeuSetupRequest = true;
+						}catch(Exception e){
+							recebeuSetupRequest = false;
+						}
 					}
 				}
-				else if(isStartRequest(requestReceived)){
-					server.timer.start();
-				}
-				else if(isPauseRequest(requestReceived)){
-					server.timer.stop();
-				}
-				else if(isTeardownRequest(requestReceived)){
-					recebeuTearDownRequest = true;
-					server.timer.stop();
-				}
 				else{
-					
+					logger.info("Passou no else");
+					if(isStartRequest(requestReceived)){
+						server.timer.start();
+					}
+					else if(isPauseRequest(requestReceived)){
+						server.timer.stop();
+					}
+					else if(isTeardownRequest(requestReceived)){
+						recebeuTearDownRequest = true;
+						server.timer.stop();
+					}
+					else{
+						
+					}
 				}
+			
+			}catch(Exception e){
+				logger.warning("Vixe, mano!");
+				break;
 			}
 		
-		
-
 		//logger.info("Acabou");
 		//server.closeClientSocket();
-		
 		//server.closeServer();
 		//server.dispose();
 		
