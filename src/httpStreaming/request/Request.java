@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
 
-
 public class Request {
 	private String method;
 	private String uri;
@@ -27,7 +26,7 @@ public class Request {
 					this.protocol = values[2];
 				}// TODO Tratar erro
 			} else {
-				// TODO Recuperar os cabeçalhos e corpo
+				// TODO Recuperar os cabeï¿½alhos e corpo
 			}
 			lineNumber++;
 

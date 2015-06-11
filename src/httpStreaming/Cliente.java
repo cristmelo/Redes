@@ -7,9 +7,17 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.ImageIcon;
@@ -22,19 +30,20 @@ import javax.swing.Timer;
 
 public class Cliente {
 	public final static Logger logger = Logger.getLogger(Cliente.class.toString());
-    //Informações do client
+    //Informaï¿½ï¿½es do client
 	String serverName;
 	int socketPort;
 	Socket clientSocket;
-    InputStream inputServer;
-    OutputStream outputServer;
-    
-    
-    //Informaçoes do video
+	BufferedReader inputServer;
+	BufferedWriter outputServer;
+	final static String CRLF = "\r\n";
+	
+	
+    //Informaï¿½oes do video
     String videoFileName;
     
 	
-	//Versão do protocolo utilizada
+	//Versï¿½o do protocolo utilizada
 	public final static String HTTP_VERSION = "HTTP/1.1";
 	
 	//GUI
@@ -55,7 +64,7 @@ public class Cliente {
     
     
     public Cliente(String serverName, int socketPort) {        
-        //Informações do cliente
+        //Informaï¿½ï¿½es do cliente
     	this.serverName = serverName;
     	this.socketPort = socketPort;
     	
@@ -74,7 +83,7 @@ public class Cliente {
         buttonPanel.add(playButton);
         buttonPanel.add(pauseButton);
         buttonPanel.add(tearButton);
-        setupButton.addActionListener(new setupButtonListener());
+        setupButton.addActionListener(new setupButtonListener(this));
         playButton.addActionListener(new playButtonListener());
         pauseButton.addActionListener(new pauseButtonListener());
         tearButton.addActionListener(new tearButtonListener());
@@ -102,7 +111,32 @@ public class Cliente {
 
     } 
 
-  //------------------------------------
+    
+    public void makeConnectionWithServer(){
+    	try {
+			clientSocket = new Socket(this.serverName, this.socketPort);
+			inputServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+			outputServer = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
+		} catch (Exception e) {
+			logger.log(Level.SEVERE, "DeuRuim:", e );
+		}
+    }
+    
+    public void closeConnectionWithServer(){
+    	try {
+			clientSocket.close();
+		} catch (Exception e) {
+			logger.log(Level.SEVERE,"Deu ruim ao fechar conexÃ£o com servidor",e);
+		}
+    }
+    
+    
+    //Pede pro servidor um arquivo de video
+    public void askForVideo(String videoFileName){
+    	
+    }
+    
+    //------------------------------------
     //Handler for buttons
     //------------------------------------
     
@@ -113,18 +147,30 @@ public class Cliente {
     //Handler for Setup button
     //-----------------------
     class setupButtonListener implements ActionListener{
+    	Cliente c;
+    	setupButtonListener(Cliente c){
+    		this.c = c;
+    	}
+    	
         public void actionPerformed(ActionEvent e){
-            
             logger.info("Setup Button pressed !");
-            
+            try {
+                c.getURIRawContent("setup/" + c.videoFileName);
+				logger.info("Enviou msg!");
+			} catch (Exception e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} 
         }    
     }
+    
+    
+    
     
     //Handler for Play button
     //-----------------------
     class playButtonListener implements ActionListener {
         public void actionPerformed(ActionEvent e){
-            
             logger.info("Play Button pressed !");
             
         }
@@ -160,14 +206,49 @@ public class Cliente {
             
         }
     }
-
     
-    public static void main(String argv[]) throws Exception
+    
+    public String getURIRawContent(String path) throws UnknownHostException, IOException {
+    	
+		try {
+			// Abre a conexÃ£o
+			//PrintWriter out = new PrintWriter(outputServer, true);
+		
+			// Envia a requisiÃ§Ã£o
+			outputServer.write("GET " + path + " " + HTTP_VERSION + CRLF);
+			outputServer.write("Host: " + this.serverName + CRLF);
+			outputServer.write("Connection: Close"+ CRLF);
+			outputServer.flush();
+			/*
+			boolean loop = true;
+			StringBuffer sb = new StringBuffer();
+		
+			// recupera a resposta quando ela estiver disponÃ­vel
+			while (loop) {
+				if (inputServer.ready()) {
+					int i = 0;
+					while ((i = inputServer.read()) != -1) {
+						sb.append((char) i);
+					}
+					loop = false;
+				}
+			}*/
+			return "";//sb.toString();
+		} catch(Exception e){
+			return "";
+		}
+	}
+    
+    
+
+	public static void main(String argv[]) throws Exception
     {
         //Create a Client object
         Cliente cliente = new Cliente(argv[0], Integer.parseInt(argv[1]));
-        
-
+        cliente.videoFileName = "movie.Mjpeg";
+        cliente.makeConnectionWithServer();
+        logger.info("Pronto");
+        logger.info(cliente.getURIRawContent("cad"));
     }
 }
 
