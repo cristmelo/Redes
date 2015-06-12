@@ -16,22 +16,18 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.sound.midi.Receiver;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.Timer;
 
-import udpStreaming.RTPpacket;
 import httpStreaming.VideoStream;
 
 public class Servidor extends JFrame implements ActionListener{
@@ -57,7 +53,7 @@ public class Servidor extends JFrame implements ActionListener{
     int imagenb = 0; //image nb of the image currently transmitted
     VideoStream video; //VideoStream object used to access video frames
     static int MJPEG_TYPE = 26; //RTP payload type for MJPEG video
-    static int FRAME_PERIOD = 100; //Frame period of the video to stream, in ms
+    static int FRAME_PERIOD = 50; //Frame period of the video to stream, in ms
     static int VIDEO_LENGTH = 500; //length of the video in frames
 	
 	
@@ -180,7 +176,7 @@ public class Servidor extends JFrame implements ActionListener{
 	
 	public void closeVideoDataConnection(){
 		try {
-			clientSocket.close();
+			videoDataSocket.close();
 		} catch (IOException e) {
 			logger.info("Deu erro no close client!");
 		}
@@ -230,7 +226,13 @@ public class Servidor extends JFrame implements ActionListener{
         }
         else
         {
-            //if we have reached the end of the video file, stop the timer
+        	if(!videoDataSocket.isClosed()){
+        		try {
+					videoDataSocket.close();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+        	}
             timer.stop();
         }
 		
@@ -300,7 +302,6 @@ public class Servidor extends JFrame implements ActionListener{
 		Response responseBuilted;
 		
 		String responseString;
-		String tipoDaRequisicao;
 		String videoFileName;
 		
 		
@@ -349,9 +350,9 @@ public class Servidor extends JFrame implements ActionListener{
 					recebeuTearDownRequest = true;
 					server.closeServerConnectioWithClient();
 					server.closeVideoDataConnection();
-					server.stopListenPort();
 					server.timer.stop();
 					System.exit(0);
+					
 				}
 			
 			}catch(Exception e){

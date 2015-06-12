@@ -17,8 +17,6 @@ import java.io.InputStreamReader;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.DatagramPacket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.logging.Level;
@@ -31,7 +29,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
-import udpStreaming.RTPpacket;
 
 
 public class Cliente {
@@ -77,11 +74,11 @@ public class Cliente {
 	
     
     
-    public Cliente(String serverName, int socketPort) {        
+    public Cliente(String serverName, int socketPort, String videoName) {        
         //Informa��es do cliente
     	this.serverName = serverName;
     	this.socketPort = socketPort;
-    	
+    	this.videoFileName = videoName;
     	//build GUI
         //--------------------------
         //Frame
@@ -316,10 +313,8 @@ public class Cliente {
 	public static void main(String argv[]) throws Exception
     {
         //Create a Client object
-        Cliente cliente = new Cliente(argv[0], Integer.parseInt(argv[1]));
-        cliente.videoFileName = "movie.Mjpeg";
+        Cliente cliente = new Cliente(argv[0], Integer.parseInt(argv[1]), argv[2]);
         cliente.makeConnectionWithServer();
-        logger.info("Pronto");
     }
 }
 
