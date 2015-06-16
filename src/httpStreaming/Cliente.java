@@ -17,6 +17,10 @@ import java.io.InputStreamReader;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.net.DatagramPacket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.logging.Level;
@@ -29,6 +33,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
+//import udpStreaming.RTPpacket;
 
 
 public class Cliente {
@@ -74,11 +79,11 @@ public class Cliente {
 	
     
     
-    public Cliente(String serverName, int socketPort, String videoName) {        
+    public Cliente(String serverName, int socketPort) {        
         //Informa��es do cliente
     	this.serverName = serverName;
     	this.socketPort = socketPort;
-    	this.videoFileName = videoName;
+    	
     	//build GUI
         //--------------------------
         //Frame
@@ -184,7 +189,7 @@ public class Cliente {
             logger.info("Setup Button pressed !");
             try {
             	if(!isAlreadySetup){
-            		c.getURIRawContent("setup/" + c.videoFileName);
+            		System.out.println(c.getURIRawContent("setup/" + c.videoFileName));
             		makeDataConnection();
             		isAlreadySetup = true;
             	}
@@ -209,7 +214,7 @@ public class Cliente {
             logger.info("Play Button pressed !");
             try {
             	if(isAlreadySetup){
-            		c.getURIRawContent("play/");
+            		System.out.println(c.getURIRawContent("play/"));
             		c.timer.start();
             	}
 			} catch (Exception e1) {
@@ -231,7 +236,7 @@ public class Cliente {
             logger.info("Pause Button pressed !");
             try {
             	if(isAlreadySetup){
-            		c.getURIRawContent("pause/");
+            		System.out.println(c.getURIRawContent("pause/"));
             		c.timer.stop();
             	}
 			} catch (Exception e1) {
@@ -251,7 +256,7 @@ public class Cliente {
         public void actionPerformed(ActionEvent e){
             logger.info("Teardown Button pressed !");
             try {
-                c.getURIRawContent("teardown/");
+                System.out.println(c.getURIRawContent("teardown/"));
                 c.closeConnectionWithServer();
                 c.closeDataConnection();
                 c.timer.stop();
@@ -292,19 +297,40 @@ public class Cliente {
     }
     
     
-    public String getURIRawContent(String path) throws UnknownHostException, IOException {
-    	
-		try {
+    private String convertStreamToString() {
+		String stringResultante = "";
+		StringBuilder sb = new StringBuilder();
+		//Writer writer = new StringWriter();
+		//char[] buffer = new char[2048];
 		
-			// Envia a requisição
+		try {
+			for(int i=0; i<= 6;i++){
+				sb.append(inputServer.readLine());
+			}
+			
+			//writer.write(buffer, 0, i);
+			//stringResultante = writer.toString();
+			stringResultante = sb.toString();
+		} catch (Exception e) {
+			logger.log(Level.SEVERE, "Erro ao converter stream para string", e);
+			return "";
+		}
+	
+		return stringResultante;
+	}
+    
+    
+    public String getURIRawContent(String path) throws UnknownHostException, IOException {
+    	String responseString;
+		try {
 			outputServer.write("GET " + path + " " + HTTP_VERSION + CRLF);
 			outputServer.write("Host: " + this.serverName + CRLF);
 			outputServer.write("Connection: Close"+ CRLF);
 			outputServer.flush();
-
-			return "";
+			responseString = convertStreamToString();
+			return responseString;
 		} catch(Exception e){
-			return "";
+			return "Exception";
 		}
 	}
     
@@ -313,8 +339,10 @@ public class Cliente {
 	public static void main(String argv[]) throws Exception
     {
         //Create a Client object
-        Cliente cliente = new Cliente(argv[0], Integer.parseInt(argv[1]), argv[2]);
+        Cliente cliente = new Cliente(argv[0], Integer.parseInt(argv[1]));
+        cliente.videoFileName = "movie.Mjpeg";
         cliente.makeConnectionWithServer();
+        logger.info("Pronto");
     }
 }
 

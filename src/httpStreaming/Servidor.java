@@ -1,8 +1,10 @@
 package httpStreaming;
 
 import httpStreaming.request.Request;
+import httpStreaming.response.FailureResponse;
 import httpStreaming.response.Response;
 import httpStreaming.response.ResponseFactory;
+import httpStreaming.response.SuccessResponse;
 
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
@@ -16,18 +18,25 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.sound.midi.Receiver;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.Timer;
 
+
+
+
+//import udpStreaming.RTPpacket;
 import httpStreaming.VideoStream;
 
 public class Servidor extends JFrame implements ActionListener{
@@ -53,7 +62,7 @@ public class Servidor extends JFrame implements ActionListener{
     int imagenb = 0; //image nb of the image currently transmitted
     VideoStream video; //VideoStream object used to access video frames
     static int MJPEG_TYPE = 26; //RTP payload type for MJPEG video
-    static int FRAME_PERIOD = 50; //Frame period of the video to stream, in ms
+    static int FRAME_PERIOD = 40; //Frame period of the video to stream, in ms
     static int VIDEO_LENGTH = 500; //length of the video in frames
 	
 	
@@ -176,7 +185,7 @@ public class Servidor extends JFrame implements ActionListener{
 	
 	public void closeVideoDataConnection(){
 		try {
-			videoDataSocket.close();
+			clientSocket.close();
 		} catch (IOException e) {
 			logger.info("Deu erro no close client!");
 		}
@@ -226,13 +235,7 @@ public class Servidor extends JFrame implements ActionListener{
         }
         else
         {
-        	if(!videoDataSocket.isClosed()){
-        		try {
-					videoDataSocket.close();
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
-        	}
+            //if we have reached the end of the video file, stop the timer
             timer.stop();
         }
 		
@@ -302,6 +305,7 @@ public class Servidor extends JFrame implements ActionListener{
 		Response responseBuilted;
 		
 		String responseString;
+		String tipoDaRequisicao;
 		String videoFileName;
 		
 		
@@ -310,36 +314,53 @@ public class Servidor extends JFrame implements ActionListener{
 				
 		//Espera pelo requisi��o setup/nomeDoVideo
 		
-		
-		
 		boolean recebeuSetupRequest = false;
 		boolean	recebeuTearDownRequest = false;
 		while(!recebeuTearDownRequest){
 			try{			
 				requestReceived = server.receiveRequest();
-				responseBuilted = ResponseFactory.createResponse(requestReceived);
-				responseString = responseBuilted.respond();
-				server.sendString(responseString);
-				
+								
 				if(!recebeuSetupRequest){
 					if(isSetupRequest(requestReceived)){
 						try{
 							videoFileName = requestReceived.getUri().split("/")[1];
 							server.video = new VideoStream(videoFileName);
-							recebeuSetupRequest = true;
+							responseBuilted = new SuccessResponse(requestReceived);
+							responseString = responseBuilted.respond();
+							server.sendString(responseString);
 							server.makeVideoDataConnection();
+							recebeuSetupRequest = true;
 						}catch(Exception e){
 							recebeuSetupRequest = false;
 						}
 					}
 				}
 				else{
-					logger.info("Passou no else");
 					if(isStartRequest(requestReceived)){
-						server.timer.start();
+						if(server.imagenb < VIDEO_LENGTH){
+							responseBuilted = new SuccessResponse(requestReceived);
+							responseString = responseBuilted.respond();
+							server.sendString(responseString);
+							server.timer.start();
+						}
+						else{
+							responseBuilted = new FailureResponse(requestReceived);
+							responseString = responseBuilted.respond();
+							server.sendString(responseString);
+						}
 					}
 					else if(isPauseRequest(requestReceived)){
-						server.timer.stop();
+						if(server.imagenb < VIDEO_LENGTH){
+							responseBuilted = new SuccessResponse(requestReceived);
+							responseString = responseBuilted.respond();
+							server.sendString(responseString);
+							server.timer.stop();
+						}
+						else{
+							responseBuilted = new FailureResponse(requestReceived);
+							responseString = responseBuilted.respond();
+							server.sendString(responseString);
+						}
 					}
 					
 					else{
@@ -347,12 +368,16 @@ public class Servidor extends JFrame implements ActionListener{
 					}
 				}
 				if(isTeardownRequest(requestReceived)){
+					responseBuilted = new SuccessResponse(requestReceived);
+					responseString = responseBuilted.respond();
+					server.sendString(responseString);
+					
 					recebeuTearDownRequest = true;
 					server.closeServerConnectioWithClient();
 					server.closeVideoDataConnection();
+					server.stopListenPort();
 					server.timer.stop();
 					System.exit(0);
-					
 				}
 			
 			}catch(Exception e){

@@ -1,4 +1,5 @@
 //VideoStream
+
 package httpStreaming;
 import java.io.*;
 
@@ -8,7 +9,7 @@ public class VideoStream {
     int frame_nb; //current frame nb
     
     //-----------------------------------
-    //constructor
+    //constructor	
     //-----------------------------------
     public VideoStream(String filename) throws Exception{
         
